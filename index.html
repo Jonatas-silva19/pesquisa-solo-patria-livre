@@ -1,0 +1,648 @@
+from google.colab import files
+
+html_v3 = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pesquisa de Solo — Pátria Livre/MST</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-principal: #0d0f12;
+      --bg-card: #16191f;
+      --bg-input: #1f242d;
+      --borda: #2b313d;
+      --texto: #f1f3f5;
+      --texto-sec: #9aa4b2;
+      --vermelho: #d62828;
+      --vermelho-hover: #b81d1d;
+      --verde: #2b9348;
+      --amarelo: #f77f00;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-principal);
+      color: var(--texto);
+      line-height: 1.5;
+      padding: 1rem;
+    }
+    .container { max-width: 1180px; margin: 0 auto; }
+    header {
+      border-left: 5px solid var(--vermelho);
+      padding-left: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+    h1 { font-size: 1.5rem; font-weight: 700; }
+    .subtitulo { color: var(--texto-sec); font-size: 0.9rem; }
+    .modo-bar {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg-card);
+      padding: 0.45rem;
+      border-radius: 8px;
+      border: 1px solid var(--borda);
+    }
+    button, select, input {
+      background: var(--bg-input);
+      color: var(--texto);
+      border: 1px solid var(--borda);
+      padding: 0.55rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    button:hover, select:hover { border-color: #6c757d; }
+    button.ativo, button.btn-primario {
+      background: var(--vermelho);
+      border-color: var(--vermelho);
+      color: #fff;
+      font-weight: 600;
+    }
+    button.ativo:hover, button.btn-primario:hover { background: var(--vermelho-hover); }
+    .banner-status {
+      background: var(--bg-card);
+      border: 1px solid var(--vermelho);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .badge {
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-sim { background: var(--amarelo); color: #000; }
+    .badge-real { background: var(--verde); color: #fff; }
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--borda);
+      border-radius: 10px;
+      padding: 1.1rem;
+    }
+    .card-topo {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--texto-sec);
+      margin-bottom: 0.4rem;
+    }
+    .valor-grande { font-size: 2rem; font-weight: 700; color: #fff; margin: 0.25rem 0; }
+    .valor-erro { color: var(--vermelho); font-size: 1.25rem; font-weight: 700; }
+    .meta-info { font-size: 0.82rem; color: var(--texto-sec); }
+    .secao {
+      background: var(--bg-card);
+      border: 1px solid var(--borda);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .secao-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--borda);
+      padding-bottom: 0.75rem;
+    }
+    .secao h2 { font-size: 1.1rem; border-left: 3px solid var(--vermelho); padding-left: 0.6rem; }
+    .grid-graficos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .canvas-wrapper { position: relative; height: 280px; width: 100%; }
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.8rem;
+    }
+    .config-item {
+      background: var(--bg-input);
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--borda);
+    }
+    .config-item label { display: block; font-size: 0.82rem; color: var(--texto-sec); margin-bottom: 0.35rem; }
+    .config-item select { width: 100%; }
+    .filtros-bar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+    .tabela-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--borda); }
+    th { color: var(--texto-sec); font-weight: 600; background: #12151a; }
+    tr:hover { background: rgba(214, 40, 40, 0.06); }
+    .tag-solo { padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+    .tag-palha { background: rgba(43, 147, 72, 0.2); color: #52b788; border: 1px solid #2b9348; }
+    .tag-exposto { background: rgba(214, 40, 40, 0.2); color: #ff758f; border: 1px solid var(--vermelho); }
+    .aviso-vazio { text-align: center; padding: 2.5rem 1rem; color: var(--texto-sec); font-size: 1.05rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>Pesquisa de Solo — Pátria Livre/MST</h1>
+      <p class="subtitulo">Monitoramento Remoto Comparativo: Solo com Palha vs. Solo Exposto (Fuso: America/Sao_Paulo)</p>
+    </div>
+    <div class="modo-bar">
+      <button type="button" id="btnModoSimulacao">Prévia (Simulação)</button>
+      <button type="button" id="btnModoReal" class="ativo">Dados Reais</button>
+    </div>
+  </header>
+
+  <div class="banner-status">
+    <div>
+      <span id="badgeFonte" class="badge badge-real">Dados Reais</span>
+      <span id="textoFonte" style="margin-left: 0.5rem; font-size: 0.9rem;">
+        Conectado ao banco de dados persistente das placas Node 1 e Node 2.
+      </span>
+    </div>
+    <div class="meta-info" id="statusPlacasResumo">Pronto</div>
+  </div>
+
+  <div class="grid-cards" id="cardsUltimasLeituras"></div>
+
+  <div class="secao">
+    <div class="secao-header">
+      <h2>Identificação dos Sensores no Experimento</h2>
+      <span class="meta-info">Altere aqui se mover os garfos ou sondas entre os canteiros</span>
+    </div>
+    <div class="config-grid" id="painelConfiguracao"></div>
+  </div>
+
+  <div class="grid-graficos">
+    <div class="secao" style="margin-bottom:0;">
+      <div class="secao-header">
+        <h2>Temperatura do Solo (°C)</h2>
+        <select id="filtroGraficoTemp">
+          <option value="24h" selected>Últimas 24 horas</option>
+          <option value="7d">Últimos 7 dias</option>
+          <option value="tudo">Todo o período</option>
+        </select>
+      </div>
+      <div class="canvas-wrapper"><canvas id="graficoTemperatura"></canvas></div>
+    </div>
+
+    <div class="secao" style="margin-bottom:0;">
+      <div class="secao-header">
+        <h2>Umidade Bruta (Leitura A0)</h2>
+        <select id="filtroGraficoUmid">
+          <option value="24h" selected>Últimas 24 horas</option>
+          <option value="7d">Últimos 7 dias</option>
+          <option value="tudo">Todo o período</option>
+        </select>
+      </div>
+      <div class="canvas-wrapper"><canvas id="graficoUmidade"></canvas></div>
+    </div>
+  </div>
+
+  <div class="secao">
+    <div class="secao-header">
+      <h2>Histórico Unificado de Medições (Node 1 e Node 2)</h2>
+      <div class="filtros-bar">
+        <label class="meta-info">De:</label>
+        <input type="date" id="filtroDataInicio" />
+        <label class="meta-info">Até:</label>
+        <input type="date" id="filtroDataFim" />
+        <button type="button" id="btnBaixarCSV" class="btn-primario">Baixar CSV (Excel)</button>
+      </div>
+    </div>
+    <div class="tabela-container" id="containerTabela"></div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://qufwjtwtufmxfmeivmit.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_ni1SUKnkgzctXtX4jMe_5A_-Qwfs8xX";
+
+  let modoAtual = "real";
+  let dadosReais = [];
+  let configSensores = {
+    node1_sonda1: { nome: "Sonda 1 (Plaquinha Verde 1)", placa: "Node 1", tipo: "temperatura", condicao_solo: "palha" },
+    node1_sonda2: { nome: "Sonda 2 (Plaquinha Verde 2)", placa: "Node 1", tipo: "temperatura", condicao_solo: "exposto" },
+    node1_garfo1: { nome: "Garfo 1 (Plaquinha Azul 1 - A0)", placa: "Node 1", tipo: "umidade_bruta", condicao_solo: "palha" },
+    node2_garfo2: { nome: "Garfo 2 (Plaquinha Azul 2 - A0)", placa: "Node 2", tipo: "umidade_bruta", condicao_solo: "exposto" }
+  };
+
+  let chartTemp = null;
+  let chartUmid = null;
+
+  function formatarDataHoraSP(isoString) {
+    const data = new Date(isoString);
+    return new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    }).format(data);
+  }
+
+  function gerarDadosSimulados() {
+    const agora = Date.now();
+    const lista = [];
+    for (let h = 23; h >= 0; h--) {
+      const ts = new Date(agora - h * 3600000).toISOString();
+      const horaDia = new Date(agora - h * 3600000).getHours();
+      const cicloSolar = Math.sin(((horaDia - 6) / 24) * Math.PI * 2);
+      const falhaSonda2 = (h === 10);
+
+      lista.push(
+        {
+          criado_em: ts, placa: "Node 1", sensor_id: "node1_sonda1",
+          condicao_solo: configSensores.node1_sonda1.condicao_solo,
+          tipo_medicao: "temperatura",
+          valor: Number((23.5 + cicloSolar * 2.2).toFixed(1)),
+          status_sensor: "OK"
+        },
+        {
+          criado_em: ts, placa: "Node 1", sensor_id: "node1_sonda2",
+          condicao_solo: configSensores.node1_sonda2.condicao_solo,
+          tipo_medicao: "temperatura",
+          valor: falhaSonda2 ? null : Number((27.8 + cicloSolar * 5.8).toFixed(1)),
+          status_sensor: falhaSonda2 ? "Sonda sem resposta" : "OK"
+        },
+        {
+          criado_em: ts, placa: "Node 1", sensor_id: "node1_garfo1",
+          condicao_solo: configSensores.node1_garfo1.condicao_solo,
+          tipo_medicao: "umidade_bruta",
+          valor: Math.round(640 - (23 - h) * 2.5),
+          status_sensor: "OK"
+        },
+        {
+          criado_em: ts, placa: "Node 2", sensor_id: "node2_garfo2",
+          condicao_solo: configSensores.node2_garfo2.condicao_solo,
+          tipo_medicao: "umidade_bruta",
+          valor: Math.round(520 - (23 - h) * 6.2),
+          status_sensor: "OK"
+        }
+      );
+    }
+    return lista;
+  }
+
+  async function carregarDadosReais() {
+    const headers = {
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json"
+    };
+    try {
+      const respCfg = await fetch(SUPABASE_URL + "/rest/v1/configuracao_sensores?select=*", { headers });
+      if (respCfg.ok) {
+        const cfgs = await respCfg.json();
+        cfgs.forEach(c => {
+          if (configSensores[c.sensor_id]) {
+            configSensores[c.sensor_id].condicao_solo = c.condicao_solo;
+          }
+        });
+      }
+      const respMed = await fetch(SUPABASE_URL + "/rest/v1/medicoes_solo?select=*&order=criado_em.asc&limit=2000", { headers });
+      if (respMed.ok) {
+        dadosReais = await respMed.json();
+      }
+    } catch (err) {
+      console.error("Erro ao carregar dados:", err);
+    }
+  }
+
+  async function salvarCondicaoSensor(sensorId, novaCondicao) {
+    configSensores[sensorId].condicao_solo = novaCondicao;
+    atualizarVisualizacao();
+    try {
+      await fetch(SUPABASE_URL + "/rest/v1/configuracao_sensores?sensor_id=eq." + sensorId, {
+        method: "PATCH",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ condicao_solo: novaCondicao, atualizado_em: new Date().toISOString() })
+      });
+    } catch (e) {
+      console.error("Erro ao salvar condição:", e);
+    }
+  }
+
+  async function alternarModo(modo) {
+    modoAtual = modo;
+    document.getElementById("btnModoSimulacao").classList.toggle("ativo", modo === "simulacao");
+    document.getElementById("btnModoReal").classList.toggle("ativo", modo === "real");
+
+    const badge = document.getElementById("badgeFonte");
+    const texto = document.getElementById("textoFonte");
+    if (modo === "simulacao") {
+      badge.className = "badge badge-sim";
+      badge.textContent = "Simulação";
+      texto.innerHTML = "Exibindo dados simulados para prévia do painel. Clique em <strong>Dados Reais</strong> para ver as leituras do campo.";
+      atualizarVisualizacao();
+    } else {
+      badge.className = "badge badge-real";
+      badge.textContent = "Dados Reais";
+      texto.innerHTML = "Sincronizando leituras do banco de dados...";
+      atualizarVisualizacao();
+      await carregarDadosReais();
+      texto.innerHTML = "Conectado ao banco de dados persistente das placas Node 1 e Node 2.";
+      atualizarVisualizacao();
+    }
+  }
+
+  function renderizarConfiguracao() {
+    const container = document.getElementById("painelConfiguracao");
+    container.innerHTML = Object.entries(configSensores).map(([id, cfg]) => `
+      <div class="config-item">
+        <label><strong>${cfg.placa}</strong> — ${cfg.nome}</label>
+        <select data-sensor="${id}" class="select-condicao">
+          <option value="palha" ${cfg.condicao_solo === "palha" ? "selected" : ""}>Solo com palha</option>
+          <option value="exposto" ${cfg.condicao_solo === "exposto" ? "selected" : ""}>Solo exposto</option>
+        </select>
+      </div>
+    `).join("");
+
+    container.querySelectorAll(".select-condicao").forEach(sel => {
+      sel.addEventListener("change", (e) => salvarCondicaoSensor(e.target.dataset.sensor, e.target.value));
+    });
+  }
+
+  function atualizarVisualizacao() {
+    renderizarConfiguracao();
+    const baseDados = modoAtual === "simulacao" ? gerarDadosSimulados() : dadosReais;
+
+    const cardsEl = document.getElementById("cardsUltimasLeituras");
+    const resumoPlacasEl = document.getElementById("statusPlacasResumo");
+
+    if (modoAtual === "real" && baseDados.length === 0) {
+      cardsEl.innerHTML = `<div class="card" style="grid-column: 1 / -1;"><div class="aviso-vazio">Aguardando a primeira medição</div></div>`;
+      resumoPlacasEl.textContent = "Nenhuma leitura real recebida ainda.";
+      document.getElementById("containerTabela").innerHTML = `<div class="aviso-vazio">Aguardando a primeira medição</div>`;
+      if (chartTemp) { chartTemp.destroy(); chartTemp = null; }
+      if (chartUmid) { chartUmid.destroy(); chartUmid = null; }
+      return;
+    }
+
+    const statusPlacas = ["Node 1", "Node 2"].map(placa => {
+      const leiturasPlaca = baseDados.filter(d => d.placa === placa);
+      if (leiturasPlaca.length === 0) return `${placa}: Sem envios`;
+      const ultimoTs = leiturasPlaca[leiturasPlaca.length - 1].criado_em;
+      const atrasoMin = (Date.now() - new Date(ultimoTs).getTime()) / 60000;
+      const alerta = (modoAtual === "real" && atrasoMin > 75) ? " (Sem enviar dados)" : "";
+      return `${placa}: ${formatarDataHoraSP(ultimoTs)}${alerta}`;
+    });
+    resumoPlacasEl.textContent = "Última atualização — " + statusPlacas.join(" | ");
+
+    cardsEl.innerHTML = Object.entries(configSensores).map(([id, cfg]) => {
+      const leiturasSensor = baseDados.filter(d => d.sensor_id === id);
+      const ultima = leiturasSensor[leiturasSensor.length - 1];
+      const condicaoLabel = cfg.condicao_solo === "palha" ? "Solo com palha" : "Solo exposto";
+      const tagClass = cfg.condicao_solo === "palha" ? "tag-palha" : "tag-exposto";
+
+      if (!ultima) {
+        return `
+          <div class="card">
+            <div class="card-topo"><span>${cfg.placa}</span><span class="tag-solo ${tagClass}">${condicaoLabel}</span></div>
+            <div class="meta-info">${cfg.nome}</div>
+            <div class="valor-erro">Aguardando medição</div>
+          </div>`;
+      }
+
+      const semResposta = ultima.status_sensor !== "OK" || ultima.valor === null;
+      const unidade = cfg.tipo === "temperatura" ? " °C" : " (A0 bruta)";
+      const valorHtml = semResposta
+        ? `<div class="valor-erro">Sonda sem resposta</div>`
+        : `<div class="valor-grande">${String(ultima.valor).replace(".", ",")}${unidade}</div>`;
+
+      return `
+        <div class="card">
+          <div class="card-topo"><span>${cfg.placa}</span><span class="tag-solo ${tagClass}">${condicaoLabel}</span></div>
+          <div class="meta-info">${cfg.nome}</div>
+          ${valorHtml}
+          <div class="meta-info">Atualizado: ${formatarDataHoraSP(ultima.criado_em)}</div>
+        </div>`;
+    }).join("");
+
+    renderizarGraficos(baseDados);
+    renderizarTabela(baseDados);
+  }
+
+  function filtrarPorJanela(dados, janela) {
+    if (janela === "tudo") return dados;
+    const ms = janela === "24h" ? 24 * 3600000 : 7 * 24 * 3600000;
+    const limite = Date.now() - ms;
+    return dados.filter(d => new Date(d.criado_em).getTime() >= limite);
+  }
+
+  function renderizarGraficos(baseDados) {
+    if (typeof Chart === "undefined") return;
+
+    const dadosTemp = filtrarPorJanela(
+      baseDados.filter(d => d.tipo_medicao === "temperatura"),
+      document.getElementById("filtroGraficoTemp").value
+    );
+    const dadosUmid = filtrarPorJanela(
+      baseDados.filter(d => d.tipo_medicao === "umidade_bruta"),
+      document.getElementById("filtroGraficoUmid").value
+    );
+
+    const labelsTemp = [...new Set(dadosTemp.map(d => formatarDataHoraSP(d.criado_em)))];
+    const mapearSerie = (dados, labels, sensorId) => labels.map(lbl => {
+      const item = dados.find(d => d.sensor_id === sensorId && formatarDataHoraSP(d.criado_em) === lbl);
+      return item && item.status_sensor === "OK" ? item.valor : null;
+    });
+
+    if (chartTemp) chartTemp.destroy();
+    chartTemp = new Chart(document.getElementById("graficoTemperatura"), {
+      type: "line",
+      data: {
+        labels: labelsTemp,
+        datasets: [
+          {
+            label: `Sonda 1 (${configSensores.node1_sonda1.condicao_solo === "palha" ? "Palha" : "Exposto"})`,
+            data: mapearSerie(dadosTemp, labelsTemp, "node1_sonda1"),
+            borderColor: "#52b788",
+            backgroundColor: "#52b788",
+            spanGaps: false,
+            tension: 0.2
+          },
+          {
+            label: `Sonda 2 (${configSensores.node1_sonda2.condicao_solo === "palha" ? "Palha" : "Exposto"})`,
+            data: mapearSerie(dadosTemp, labelsTemp, "node1_sonda2"),
+            borderColor: "#d62828",
+            backgroundColor: "#d62828",
+            spanGaps: false,
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: "#f1f3f5" } } },
+        scales: {
+          x: { ticks: { color: "#9aa4b2", maxTicksLimit: 8 }, grid: { color: "#2b313d" } },
+          y: { ticks: { color: "#9aa4b2" }, grid: { color: "#2b313d" } }
+        }
+      }
+    });
+
+    const labelsUmid = [...new Set(dadosUmid.map(d => formatarDataHoraSP(d.criado_em)))];
+    if (chartUmid) chartUmid.destroy();
+    chartUmid = new Chart(document.getElementById("graficoUmidade"), {
+      type: "line",
+      data: {
+        labels: labelsUmid,
+        datasets: [
+          {
+            label: `Node 1 - Garfo 1 (${configSensores.node1_garfo1.condicao_solo === "palha" ? "Palha" : "Exposto"})`,
+            data: mapearSerie(dadosUmid, labelsUmid, "node1_garfo1"),
+            borderColor: "#52b788",
+            backgroundColor: "#52b788",
+            spanGaps: false,
+            tension: 0.2
+          },
+          {
+            label: `Node 2 - Garfo 2 (${configSensores.node2_garfo2.condicao_solo === "palha" ? "Palha" : "Exposto"})`,
+            data: mapearSerie(dadosUmid, labelsUmid, "node2_garfo2"),
+            borderColor: "#f77f00",
+            backgroundColor: "#f77f00",
+            spanGaps: false,
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: "#f1f3f5" } } },
+        scales: {
+          x: { ticks: { color: "#9aa4b2", maxTicksLimit: 8 }, grid: { color: "#2b313d" } },
+          y: { ticks: { color: "#9aa4b2" }, grid: { color: "#2b313d" } }
+        }
+      }
+    });
+  }
+
+  function filtrarDadosTabela(baseDados) {
+    const ini = document.getElementById("filtroDataInicio").value;
+    const fim = document.getElementById("filtroDataFim").value;
+    return baseDados.filter(d => {
+      const dataSP = new Date(d.criado_em).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+      if (ini && dataSP < ini) return false;
+      if (fim && dataSP > fim) return false;
+      return true;
+    }).slice().reverse();
+  }
+
+  function renderizarTabela(baseDados) {
+    const filtrados = filtrarDadosTabela(baseDados);
+    const container = document.getElementById("containerTabela");
+    if (filtrados.length === 0) {
+      container.innerHTML = `<div class="aviso-vazio">Nenhuma leitura encontrada para o período selecionado.</div>`;
+      return;
+    }
+
+    const linhas = filtrados.map(item => {
+      const cfg = configSensores[item.sensor_id] || { nome: item.sensor_id, tipo: item.tipo_medicao };
+      const condicaoLabel = item.condicao_solo === "palha" ? "Solo com palha" : "Solo exposto";
+      const tagClass = item.condicao_solo === "palha" ? "tag-palha" : "tag-exposto";
+      const valorTexto = (item.status_sensor !== "OK" || item.valor === null)
+        ? `<span style="color:var(--vermelho);font-weight:600;">Sonda sem resposta</span>`
+        : `${String(item.valor).replace(".", ",")} ${cfg.tipo === "temperatura" ? "°C" : "(A0 bruta)"}`;
+
+      return `
+        <tr>
+          <td>${formatarDataHoraSP(item.criado_em)}</td>
+          <td><strong>${item.placa}</strong></td>
+          <td>${cfg.nome}</td>
+          <td><span class="tag-solo ${tagClass}">${condicaoLabel}</span></td>
+          <td>${valorTexto}</td>
+        </tr>`;
+    }).join("");
+
+    container.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Data e Hora (SP)</th>
+            <th>Placa</th>
+            <th>Sensor</th>
+            <th>Condição do Solo</th>
+            <th>Valor Medido</th>
+          </tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>`;
+  }
+
+  function baixarCSV() {
+    const baseDados = modoAtual === "simulacao" ? gerarDadosSimulados() : dadosReais;
+    const filtrados = filtrarDadosTabela(baseDados);
+    if (filtrados.length === 0) return alert("Não há dados para exportar.");
+
+    const cabecalho = "Data e Hora (America/Sao_Paulo);Placa;Sensor;Condicao do Solo;Tipo;Valor Medido;Status\\n";
+    const linhas = filtrados.map(item => {
+      const cfg = configSensores[item.sensor_id] || { nome: item.sensor_id, tipo: item.tipo_medicao };
+      const cond = item.condicao_solo === "palha" ? "Solo com palha" : "Solo exposto";
+      const val = item.valor !== null ? String(item.valor).replace(".", ",") : "";
+      return `${formatarDataHoraSP(item.criado_em)};${item.placa};${cfg.nome};${cond};${cfg.tipo};${val};${item.status_sensor}`;
+    }).join("\\n");
+
+    const blob = new Blob(["\\uFEFF" + cabecalho + linhas], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pesquisa_solo_patria_livre_${modoAtual}.csv`;
+    link.click();
+  }
+
+  // Liga os eventos imediatamente sem esperar rede
+  document.getElementById("btnModoSimulacao").addEventListener("click", () => alternarModo("simulacao"));
+  document.getElementById("btnModoReal").addEventListener("click", () => alternarModo("real"));
+  document.getElementById("filtroGraficoTemp").addEventListener("change", atualizarVisualizacao);
+  document.getElementById("filtroGraficoUmid").addEventListener("change", atualizarVisualizacao);
+  document.getElementById("filtroDataInicio").addEventListener("change", atualizarVisualizacao);
+  document.getElementById("filtroDataFim").addEventListener("change", atualizarVisualizacao);
+  document.getElementById("btnBaixarCSV").addEventListener("click", baixarCSV);
+
+  // Renderiza a tela na hora e busca os dados em segundo plano
+  atualizarVisualizacao();
+  carregarDadosReais().then(() => {
+    if (modoAtual === "real") atualizarVisualizacao();
+  });
+
+  setInterval(async () => {
+    if (modoAtual === "real") {
+      await carregarDadosReais();
+      atualizarVisualizacao();
+    }
+  }, 60000);
+</script>
+</body>
+</html>"""
+
+with open("index_v3.html", "w", encoding="utf-8") as f:
+    f.write(html_v3)
+
+files.download("index_v3.html")
+
+with open("index_v3.html", "r", encoding="utf-8") as f:
+    print(f.read())
